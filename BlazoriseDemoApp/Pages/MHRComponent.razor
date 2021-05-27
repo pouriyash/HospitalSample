@@ -1,0 +1,123 @@
+﻿@inject IClinetChartService clientChartService;
+ 
+<LineChart @ref="MHRChart"
+           TItem="LiveDataPoint"
+           OptionsObject="@MHRChartOptions">
+    <ChartStreaming TItem="LiveDataPoint"
+                    Options="new ChartStreamingOptions {
+                                 Delay = 0,
+                                 Refresh=1000
+                             }"
+                    Refreshed="@OnMHRRefreshed" />
+</LineChart>
+
+@code{
+    ConvertModel model = new ConvertModel();
+    int skipMHR = 0;
+    LineChart<LiveDataPoint> MHRChart;
+
+    public struct LiveDataPoint
+    {
+        public object X { get; set; }
+
+        public object Y { get; set; }
+    }
+
+    object MHRChartOptions = new
+    {
+        Title = new
+        {
+            Display = true,
+            Text = "Mother Heart Rate"
+        },
+
+        Scales = new
+        {
+            YAxes = new object[]
+            {
+                new {
+                    ScaleLabel = new {
+                    Display = true, LabelString = "value"},
+                }
+                        },
+
+        },
+        Tooltips = new
+        {
+            Mode = "nearest",
+            Intersect = false
+        },
+        Hover = new
+        {
+            Mode = "nearest",
+            Intersect = false
+        }
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Task.WhenAll(
+                HandleRedraw(MHRChart, GetLineChartDataset1));
+        }
+    }
+
+    async Task HandleRedraw<TDataSet, TItem, TOptions, TModel>(BaseChart<TDataSet, TItem, TOptions, TModel> chart, params Func<TDataSet>[] getDataSets)
+        where TDataSet : ChartDataset<TItem>
+        where TOptions : ChartOptions
+        where TModel : ChartModel
+    {
+        await chart.Clear();
+
+        await chart.AddLabelsDatasetsAndUpdate(Labels, getDataSets.Select(x => x.Invoke()).ToArray());
+    }
+
+    LineChartDataset<LiveDataPoint> GetLineChartDataset1()
+    {
+        return new LineChartDataset<LiveDataPoint>
+        {
+            Data = new List<LiveDataPoint>(),
+            Label = "MHR",
+            BackgroundColor = backgroundColors[0],
+            BorderColor = borderColors[0],
+            Fill = false,
+            LineTension = 0,
+            BorderDash = new List<int> { 8, 4 },
+        };
+    }
+
+
+    async Task OnMHRRefreshed(ChartStreamingData<LiveDataPoint> data)
+    {
+
+        model = await clientChartService.GetData(skipMHR);
+
+
+        data.Value = new LiveDataPoint
+        {
+            X = DateTime.Now,
+            Y = model.MHR
+        };
+        skipMHR++;
+
+    }
+
+    string[] Labels = { };
+    List<string> backgroundColors =
+        new List<string> {
+            ChartColor.FromRgba(255, 99, 132, 0.2f),
+            ChartColor.FromRgba(54, 162, 235, 0.2f),
+            ChartColor.FromRgba(255, 206, 86, 0.2f),
+            ChartColor.FromRgba(75, 192, 192, 0.2f),
+            ChartColor.FromRgba(153, 102, 255, 0.2f),
+            ChartColor.FromRgba(255, 159, 64, 0.2f) };
+    List<string> borderColors = new List<string> {
+        ChartColor.FromRgba(255, 99, 132, 1f),
+        ChartColor.FromRgba(54, 162, 235, 1f),
+        ChartColor.FromRgba(255, 206, 86, 1f),
+        ChartColor.FromRgba(75, 192, 192, 1f),
+        ChartColor.FromRgba(153, 102, 255, 1f),
+        ChartColor.FromRgba(255, 159, 64, 1f) };
+
+}
